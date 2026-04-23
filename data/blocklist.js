@@ -1,5 +1,7 @@
 const rule = (id, regex, weight = 1) => ({ id, regex, weight });
 
+const GAMBLING_STEMS = String.raw`(?:pg|eth|hoki|garuda|naga|macan|zeus|olympus|dragon|mahjong|mpo|sbo|ibc|raja|dewa|king|sultan|cuan|gacor|maxwin|scatter|ruang|jago(?:an)?|kantor|winlive|premier|merahputih|sundatoto|rumahtoto|pompa|reza|rungkad|bandar|angkasa|juragan|warung|asia|lexitoto|bobatoto|pay4d|pgbet|pgsoft|totoplus|bigbos|mansion)`;
+
 export const HIGH_CONFIDENCE_BRANDS = new Set([
   "kantorbola",
   "dewa4d",
@@ -197,6 +199,16 @@ export const HARD_MESSAGE_PATTERNS = [
   rule("promo-adjacency", /\b(?:gacor|maxwin|cuan|jackpot|scatter)\s+(?:gacor|maxwin|cuan|jackpot|scatter|jp|rtp)\b/i, 6),
   rule("trusted-page", /\blaman\s+(?:baru|resmi|alternatif|terbaru)\b[\s\S]{0,30}\b(?:terpercaya|gacor|daftar|jp|slot|togel|toto|judi)\b/i, 5),
   rule("sultan-promise", /\b(?:jadi|jd|auto|langsung|instan|instant|pasti|dijamin)\s+sultan\b/i, 6),
+  rule("depo-urgent", /\b(?:ayo|yuk|buruan|mari|segera)\s+(?:depo|deposit|top\s*up|daftar|main|join|klik)\b/i, 5),
+  rule("gambling-brand-token", new RegExp(String.raw`\b${GAMBLING_STEMS}[a-z]*(?:\d{2,}[a-z0-9]*|\d[a-z]+[a-z0-9]*)\b`, "i"), 5),
+  rule("gambling-brand-phrase", /\b(?:garuda|naga|macan|raja|dewa|king|sultan|lucky|mpo|jago(?:an)?|angkasa|mega|bandar|warung)\s+(?:hoki|bola|slot|toto|togel|bet|win|gacor|jp|maxwin|cuan|jackpot|kasino|casino|asia|indo|thailand)\b/i, 6),
+  rule("try-at-brand", new RegExp(String.raw`\b(?:coba(?:in)?|main|mampir|daftar|join|judi|taruhan)\s+(?:di|ke|pada)\s+(?:situs\s+)?${GAMBLING_STEMS}[a-z0-9]*\d*\b`, "i"), 6),
+  rule("big-win-claim", /\b(?:menang|dapet|dapat|wd|wede|withdraw|cair|profit|jp|maxwin|jackpot)\s+\d{1,4}\s*(?:juta|jt|ribu|rb|milyar|miliar|m)\b/i, 5),
+  rule("tembus-hit", /\btembus\s+(?:gacor|jp|jackpot|maxwin|scatter|cuan|perkalian|x\s*\d+)\b/i, 5),
+  rule("gacor-then-slot", /\b(?:gacor|maxwin|cuan|jp|jackpot|scatter)\s+(?:slot|togel|toto|judi|casino|kasino)\b/i, 6),
+  rule("gambling-knek", /\bknekk+\b/i, 5),
+  rule("pure-brandish-msg", /^[\s\W]*[a-z]{2,}[\s\W]*(?:slot|toto|togel|bet|poker|bola)[a-z0-9]*[\s\W]*$/i, 5),
+  rule("leet-brand-token", /\b[a-z]+\d+[a-z]+\d{2,}\b/i, 5),
 ];
 
 export const PROMO_MESSAGE_PATTERNS = [
@@ -205,10 +217,10 @@ export const PROMO_MESSAGE_PATTERNS = [
   rule("server-thailand", /\bserver\s+(?:thailand|kamboja|vietnam|luar\s*negeri|internasional)\b/i, 3),
   rule("vip-account", /\bakun\s+(?:vip|pro|thailand|sultan|platinum|elite)\b/i, 3),
   rule("leak-tip", /\bbocoran\b[\s\S]{0,20}\b(?:rtp|pola|scatter|slot|gacor|jp|maxwin)\b/i, 4),
-  rule("win-guarantee", /\b(?:garansi|dijamin|pasti)\s+(?:menang|jp|cuan|maxwin|jackpot)\b/i, 4),
+  rule("win-guarantee", /\b(?:garansi|dijamin|pasti|auto)\s+(?:menang|jp|cuan|maxwin|jackpot|knek+|dapet|tembus|sukses)\b/i, 4),
   rule("money-giveaway", /\b(?:bagi|bagikan)[\s-]*(?:bagi|2)\s+(?:saldo|dana|duit|bonus|uang|fs|freespin|freebet|chip)s?\b/i, 4),
   rule("claim-bonus", /\b(?:klaim|claim)\s+(?:bonus|saldo|cashback|chip|fs|freespin|freebet)s?\b/i, 4),
-  rule("cta-to-gamble", /\b(?:join|daftar|klik|gas|cus)\b[\s\S]{0,20}\b(?:slot|togel|toto|judi|casino)\b/i, 4),
+  rule("cta-to-gamble", /\b(?:join|daftar|klik|gas|cus|ayo|yuk|buruan|mari)\b[\s\S]{0,20}\b(?:slot|togel|toto|judi|casino)\b/i, 4),
   rule("guaranteed-cashout", /\bpasti(?:nya)?\s+cair\b/i, 3),
   rule("bank-account-setup", /\b(?:no|nomor)\s+rek(?:ening)?\s+(?:aktif|standby|baru|siap|ready|ganti)\b/i, 3),
   rule("win-chance", /\bpeluang\s+(?:menang|cuan|jp|maxwin|jackpot|gede|besar)\b/i, 3),
@@ -216,6 +228,13 @@ export const PROMO_MESSAGE_PATTERNS = [
   rule("profit-boost", /\bcuan\s+(?:gede|parah|gila|deras)\b/i, 4),
   rule("profit-amount", /\bcuan\s+(?:satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|seratus|seribu|sejuta|puluhan|ratusan|\d+)\s*(?:juta|ribu|jt|rb|m)\b/i, 4),
   rule("online-gambling", /\bpermainan\s+(?:online|judi|slot|gacor|kasino|casino)\b/i, 4),
+  rule("multiplier-hype", /\b(?:jp|maxwin|jackpot|scatter|hadiah|bonus|cuan)\s*x\s*\d{2,}\b/i, 4),
+  rule("gambling-domain-tld", /\b[a-z]{4,}\.(?:vip|site|online|xyz|bet|live|top|shop|gg|club|fun|biz)\b/i, 4),
+  rule("gambling-domain-branded", /\b[a-z]{2,}(?:\d{2,}|\d+d)\.(?:id|com|net|org|me|co|vip|site|online|xyz|bet|live|top|shop|gg|club|fun|biz)\b/i, 4),
+  rule("gambling-stem-domain", new RegExp(String.raw`\b[a-z]*${GAMBLING_STEMS}[a-z]*\.(?:id|com|net|org|me|co)\b`, "i"), 4),
+  rule("perkalian-hype", /\bperkalian\s+(?:gede|gwede|besar|gila|parah|gacor|maxwin|tinggi|x\s*\d+)\b/i, 4),
+  rule("site-pitch", /\bsitus\s+(?:lama|baru|alternatif|resmi|terbaik|terpercaya|gacor|pasti|tergacor|terbaru)\b/i, 3),
+  rule("switch-to-site", /\b(?:pindah|main|gabung|cus)\s+(?:sini|ke\s+sini|situs)\b/i, 3),
 ];
 
 export const WEAK_MESSAGE_PATTERNS = [rule("weak-slot", /\bslot\b/i, 1), rule("weak-togel", /\btogel\b/i, 1), rule("weak-toto", /\btoto\b/i, 1), rule("weak-gacor", /\bgacor\b/i, 1), rule("weak-jp", /\bjp\b/i, 1), rule("weak-maxwin", /\bmaxwin\b/i, 1), rule("weak-jackpot", /\bjackpot\b/i, 1), rule("weak-scatter", /\bscatter\b/i, 1), rule("weak-rollingan", /\brollingan\b/i, 1), rule("weak-rebate", /\brebate\b/i, 1), rule("weak-turnover", /\bturnover\b/i, 1), rule("weak-mindep", /\bmindep\b/i, 1)];

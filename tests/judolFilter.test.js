@@ -12,6 +12,7 @@ const CASES = [
   { id: "allow.gaming.valorant", donator: "valo", msg: "Push rank valorant yuk", block: false },
   { id: "allow.gaming.booking", donator: "budi", msg: "Buat booking mabar VIP bang", block: false },
   { id: "allow.gaming.booking", donator: "ahmad", msg: "Gratis 5 VIP buat yang donate ID tercepat", block: false },
+  { id: "allow.gaming.hoki", donator: "budi", msg: "hoki banget lu jing", block: false },
 
   { id: "allow.finance.withdraw", donator: "investor", msg: "Withdraw reksadana ke BCA biasanya berapa lama?", block: false },
   { id: "allow.finance.cashback", donator: "shopper", msg: "Dapet cashback shopee 50rb hari ini", block: false },
@@ -47,6 +48,10 @@ const CASES = [
 
   { id: "block.vowel-drop.sultan", donator: "eth99", msg: "mldk stiap ptrannya lngsung jd sltan!", block: true },
 
+  { id: "block.cta.ayo-deposit", donator: "viewer", msg: "AYO DEPOSIT SEKARANG DI HOKI888 DAN DAPATKAN HADIAH JACKPOT x1000 SELAMA PERMAINAN!", block: true },
+  { id: "block.cta.yuk-main-slot", donator: "viewer", msg: "yuk main slot bareng", block: true },
+  { id: "block.cta.buruan-daftar", donator: "viewer", msg: "buruan daftar sebelum promo habis", block: true },
+  { id: "review.multiplier.jp-x500", donator: "viewer", msg: "jp x500 tiap putaran", ideal: "review" },
   { id: "block.discord.bypass", donator: "viewer", msg: "rtp 97 live discord room", block: true },
   { id: "block.anti-judol.bypass", donator: "viewer", msg: "depo qris wd lancar bukan penipuan", block: true },
   { id: "block.safeword.bypass", donator: "viewer", msg: "slot gacor live stream aman terpercaya", block: true },
@@ -79,6 +84,90 @@ const CASES = [
   { id: "allow.typo.withdraw-legit",  donator: "viewer", msg: "withdraw reksadana sudah sampai", block: false },
   { id: "allow.safe.donation",        donator: "viewer", msg: "donasi langsung ke masjid",       block: false },
   { id: "allow.zerowidth",            donator: "viewer", msg: "te​rima kasih bang",              block: false },
+
+  // --- gambling-brand-token (whole or embedded brand token with lexicon stem + digits)
+  { id: "block.brand-token.hoki888", donator: "bobi", msg: "HOKI888", block: true },
+  { id: "block.brand-token.winlive4d", donator: "BHIMOCHI", msg: "WINLIVE4D", block: true },
+  { id: "block.brand-token.mahjong877", donator: "Haha", msg: "Mahjong877", block: true },
+  { id: "block.brand-token.mahjong-weist", donator: "Haha", msg: "MahjongWeist777", block: true },
+  { id: "block.brand-token.merahputih", donator: "viewer", msg: "MERAHPUTIH500 dapet jackpot", block: true },
+  { id: "block.brand-token.ruangbola", donator: "", msg: "RuangB0La77 Dijamin Auto Sukses dalam waktu singkat", block: true },
+  { id: "block.brand-token.eth8877", donator: "Lovelyxrooo", msg: "ËTH8877", block: true },
+  { id: "block.brand-token.pgbet606", donator: "Haha", msg: "PGBET606", block: true },
+  { id: "block.brand-token.premier98", donator: "viewer", msg: "daftar di PREMIER98 sekarang", block: true },
+  { id: "block.brand-token.rungkad211", donator: "viewer", msg: "Rungkad211 auto cair tiap hari", block: true },
+
+  // --- gambling-brand-phrase (two-word gambling brand phrases, no digits required)
+  { id: "block.brand-phrase.garuda-hoki", donator: "Lovely", msg: "GARUDA HOKI", block: true },
+  { id: "block.brand-phrase.naga-hoki", donator: "As", msg: "Naga Hoki 88 & Macan Asia - Tempat Berkumpulnya Para Juara", block: true },
+  { id: "block.brand-phrase.raja-slot", donator: "viewer", msg: "raja slot terbaru", block: true },
+  { id: "block.brand-phrase.sultan-cuan", donator: "viewer", msg: "sultan cuan bertebaran", block: true },
+
+  // --- try-at-brand (coba/main/daftar/join + di/ke + gambling stem)
+  { id: "block.try-at.coba-premier", donator: "Rafi", msg: "coba di PREMIER98. pasti dapet 5jt sekali depo", block: true },
+  { id: "block.try-at.coba-merahputih", donator: "syahrul", msg: "GW UDAH COBA DI SITUS MERAHPUTIH500 DAPET 10JT", block: true },
+  { id: "block.try-at.main-sundatoto", donator: "Bapakku", msg: "Judi di sundatoto.id gacor", block: true },
+
+  // --- big-win-claim (menang/dapet/wd/wede/cair + N juta/jt/milyar)
+  { id: "block.big-win.menang-16jt", donator: "dewa99", msg: "gw barusan menang 16jt bro dari dewa99", block: true },
+  { id: "block.big-win.wede-100-milyar", donator: "REZA", msg: "GACOR SLOT ANJENGG GW WEDE 100 MILYAR EDANN", block: true },
+  { id: "block.big-win.dapet-5jt", donator: "viewer", msg: "dapet 5jt sekali depo sekali main", block: true },
+  { id: "block.big-win.cair-10juta", donator: "viewer", msg: "cair 10 juta tadi pagi", block: true },
+
+  // --- tembus-hit (tembus + gacor/jp/jackpot/maxwin/scatter/cuan/perkalian)
+  { id: "block.tembus.gacor", donator: "ladeshmuani99", msg: "satu kali depo langsung tembus gacor", block: true },
+  { id: "block.tembus.jp", donator: "viewer", msg: "tembus jp gede kemarin", block: true },
+
+  // --- gacor-then-slot (reverse word order)
+  { id: "block.gacor-slot.reverse", donator: "REZA", msg: "GACOR SLOT ANJENGG GW WEDE 100 MILYAR", block: true },
+  { id: "block.maxwin-judi.reverse", donator: "viewer", msg: "maxwin judi tiap hari", block: true },
+
+  // --- win-guarantee extended (dijamin/pasti/auto + knek/dapet/tembus/cair/sukses)
+  { id: "block.guarantee.dijamin-knek", donator: "viewer", msg: "dijamin knekk terus setiap putaran", block: true },
+  { id: "block.guarantee.auto-sukses", donator: "viewer", msg: "main sini auto sukses cair tiap hari", block: true },
+  { id: "block.guarantee.pasti-tembus", donator: "viewer", msg: "pasti tembus scatter hitam", block: true },
+
+  // --- perkalian-hype
+  { id: "block.perkalian.gwede", donator: "xRungkad211", msg: "Pindah sini aja, Perkalian gwede Dijamin knekk jatah penarikan gratis 3 kali per hari", block: true },
+  { id: "review.perkalian.only", donator: "viewer", msg: "perkalian gede banget kemarin", ideal: "review" },
+
+  // --- gambling-domain-branded (hoki88.com, winlive4d.net, etc.)
+  { id: "block.domain.hoki88-com", donator: "viewer", msg: "cek hoki88.com", block: true },
+  { id: "block.domain.with-stem", donator: "viewer", msg: "main di sundatoto.id jackpot besar", block: true },
+  { id: "block.domain.suspicious-tld", donator: "viewer", msg: "link88.vip siap daftar", block: true },
+
+  // --- civilian names with digits (should NOT block)
+  { id: "allow.name.rifan133", donator: "Rifan133", msg: "Rifan133", block: false },
+  { id: "allow.name.andi99", donator: "Andi99", msg: "terima kasih bang", block: false },
+  { id: "allow.name.putri21", donator: "Putri21", msg: "semangat streamnya", block: false },
+  { id: "allow.name.budi2024", donator: "Budi2024", msg: "salam dari jogja", block: false },
+  { id: "allow.name.mahendra99", donator: "Mahendra99", msg: "Mahendra99", block: false },
+
+  // --- gaming titles with digits (should NOT block)
+  { id: "allow.gaming.fifa23", donator: "viewer", msg: "main fifa23 bareng dong", block: false },
+  { id: "allow.gaming.dota2", donator: "viewer", msg: "yuk push rank dota2", block: false },
+  { id: "allow.gaming.gta5", donator: "viewer", msg: "streaming gta5 kapan?", block: false },
+
+  // --- product mentions with digits (should NOT block)
+  { id: "allow.product.office365", donator: "viewer", msg: "error di office365 pas login", block: false },
+  { id: "allow.product.windows11", donator: "viewer", msg: "update windows11 lama banget", block: false },
+
+  // --- domains of legit services (should NOT block)
+  { id: "allow.domain.gojek", donator: "viewer", msg: "pakai gojek.com buat order", block: false },
+  { id: "allow.domain.kompas", donator: "viewer", msg: "baca berita di kompas.id", block: false },
+
+  // --- pure-brandish-msg (whole msg = <letters> + gambling suffix)
+  { id: "block.brandish.pg-bet", donator: "Haha", msg: "PG BET", block: true },
+  { id: "block.brandish.pg-bet888", donator: "Haha", msg: "PG BET888", block: true },
+  { id: "block.brandish.rezatoto", donator: "Haha", msg: "RezaTOTO", block: true },
+  { id: "block.brandish.bigbola", donator: "viewer", msg: "BigBola777", block: true },
+  { id: "allow.brandish.not-pure", donator: "viewer", msg: "slot room custom ML masih kosong?", block: false },
+
+  // --- leet-brand-token (letter+digit+letter+digit pattern with 2+ trailing digits)
+  { id: "block.leet-brand.d3w188", donator: "D3W188", msg: "D3W188 EMNG GAC0000R", block: true },
+  { id: "block.leet-brand.t0t098", donator: "Rafi", msg: "coba di T0T098. pasti dapet 5jt sekali depo", block: true },
+  { id: "allow.leet-brand.thanks", donator: "viewer", msg: "t3r1ma k4s1h bang streamnya seru", block: false },
+  { id: "allow.leet-brand.food", donator: "viewer", msg: "m4k4n siang bareng", block: false },
 ];
 
 describe("judolFilter: decide()", () => {
