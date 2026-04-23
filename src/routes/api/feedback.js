@@ -8,7 +8,7 @@ const router = express.Router();
 const MAX_FIELD_LENGTH = 4096;
 
 const feedbackLimiter = createRateLimiter({
-  windowMs: 60 * 60 * 1000,
+  windowMs: 60 * 1000, // 1 minute
   max: 30,
   name: "feedback-rl",
 });
