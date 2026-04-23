@@ -1,0 +1,14 @@
+tests/
+public/inject.js
+src/filter/homoglyphs.js
+node_modules/
+logs/
+
+*.md
+
+bun.lock
+.env
+.env.*
+
+data/wordlist-indonesia.txt
+scripts/charset.json

@@ -1,0 +1,6 @@
+node_modules/
+.env
+.killswitch
+package-lock.json
+logs/
+urls.txt
