@@ -1,5 +1,6 @@
 const rule = (id, regex, weight = 1) => ({ id, regex, weight });
 
+export const GAMBLING_STEM_SET = new Set(["pg", "eth", "hoki", "garuda", "naga", "macan", "zeus", "olympus", "dragon", "mahjong", "mpo", "sbo", "ibc", "raja", "dewa", "king", "sultan", "cuan", "gacor", "maxwin", "scatter", "ruang", "jago", "jagoan", "kantor", "winlive", "premier", "merahputih", "sundatoto", "rumahtoto", "pompa", "bandar", "angkasa", "juragan", "warung", "asia", "lexitoto", "bobatoto", "pay4d", "pgbet", "pgsoft", "totoplus", "bigbos", "mansion", "mega"]);
 const GAMBLING_STEMS = String.raw`(?:pg|eth|hoki|garuda|naga|macan|zeus|olympus|dragon|mahjong|mpo|sbo|ibc|raja|dewa|king|sultan|cuan|gacor|maxwin|scatter|ruang|jago(?:an)?|kantor|winlive|premier|merahputih|sundatoto|rumahtoto|pompa|bandar|angkasa|juragan|warung|asia|lexitoto|bobatoto|pay4d|pgbet|pgsoft|totoplus|bigbos|mansion|mega)`;
 
 const GAMBLING_NOUN = String.raw`(?:gacor|maxwin|cuan|jp|jackpot|scatter|slot|togel|toto|judi|casino|kasino|rtp)`;
@@ -244,7 +245,8 @@ export const PROMO_MESSAGE_PATTERNS = [
   rule("server-thailand", /\bserver\s+(?:thailand|kamboja|vietnam|luar\s*negeri|internasional)\b/i, 3),
   rule("vip-account", /\bakun\b[\s\S]{0,20}\b(?:vip|pro|thailand|sultan|platinum|elite|wangi|jp|gacor|hoki)\b/i, 3),
   rule("leak-tip", /\bbocoran\b[\s\S]{0,20}\b(?:rtp|pola|scatter|slot|gacor|jp|maxwin)\b/i, 4),
-  rule("guarantee-promo", /\b(?:(?:wd|withdraw|wede)(?:nya)?\s+(?:lancar|cepat|instan|mudah|kilat|cair+|berapa\s*pun)|(?:garansi|dijamin|pasti(?:nya)?|auto)\s+(?:\w+\s+)?(?:menang|jp|cuan|maxwin|jackpot|knek+|dapet|tembus|sukses|gacor|dibayar|bayar|cair+|scatter))\b/i, 4),
+  rule("wd-promo", /\b(?:wd|withdraw|wede)(?:nya)?\s+(?:lancar|cepat|instan|mudah|kilat|cair+|berapa\s*pun)\b/i, 4),
+  rule("win-guarantee", /\b(?:garansi|dijamin|pasti(?:nya)?|auto)\s+(?:\w+\s+)?(?:menang|jp|cuan|maxwin|jackpot|knek+|dapet|tembus|sukses|gacor|dibayar|bayar|cair+|scatter)\b/i, 4),
   rule("sultan-promise", /\b(?:jadi|jd|auto|langsung|instan|instant|pasti|dijamin)\s+sultan\b/i, 4),
   rule("garansi-kekalahan", /\b(?:garansi|jaminan|bonus)\s+(?:kekalahan|kalah|rugi|modal(?:\s+kembali)?)\b/i, 4),
   rule("depo-wallet", /\b(?:depo|deposit|mindep|dp)\s*(?:(?:via|pakai|pake|lewat)\s+)?(?:qris|dana|ovo|gopay|pulsa|linkaja|shopeepay)\b/i, 4),
@@ -275,6 +277,7 @@ export const PROMO_MESSAGE_PATTERNS = [
   rule("admin-bocor", /\badmin(?:nya)?\s+(?:lagi\s+)?bocor(?:in|kan|i)?\b/i, 4),
   rule("kode-bonus", /\b(?:kode|pake|pakai)\s+(?:referral|\w+)\s+(?:buat|untuk)\s+(?:tambahan|bonus|saldo|modal|spin|main|dapetin|dapat)\b/i, 4),
   rule("shortlink-redirect", /\b(?:bit\.ly|tinyurl|t\.co|s\.id|cutt\.ly|bitly\.cc|wde\.la|sid)\/[a-z0-9]+/i, 3),
+  rule("gambling-prep-brand", /\b(?:gacor|maxwin|cuan|jp|jackpot|scatter|cair|bonus|menang|wd|withdraw|wede|hoki|sultan)\b[\s\S]{0,20}\b(?:di|ke|pada|sini)\s+[a-z]{3,}\d{2,}\b/i, 4),
 ];
 
 export const WEAK_MESSAGE_PATTERNS = [rule("weak-slot", /\bslot\b/i, 1), rule("weak-togel", /\btogel\b/i, 1), rule("weak-toto", /\btoto\b/i, 1), rule("weak-gacor", /\bgacor\b/i, 1), rule("weak-jp", /\bjp\b/i, 1), rule("weak-maxwin", /\bmaxwin\b/i, 1), rule("weak-jackpot", /\bjackpot\b/i, 1), rule("weak-scatter", /\bscatter\b/i, 1), rule("weak-rollingan", /\brollingan\b/i, 1), rule("weak-rebate", /\brebate\b/i, 1), rule("weak-turnover", /\bturnover\b/i, 1), rule("weak-mindep", /\bmindep\b/i, 1)];
@@ -283,7 +286,7 @@ export const SUSPICIOUS_TOKEN_PATTERNS = [rule("brandish-suffix", /\b[a-z0-9]{3,
 
 export const ANTI_JUDOL_PHRASES = ["anti judol", "stop judol", "bahaya judol", "iklan judol", "laporkan judol", "korban judol", "waspada judol", "haram judol", "penipuan judol", "jebakan judol"];
 
-export const GAMING_SAFE_PHRASES = ["slot vip", "slot kosong", "slot penuh", "slot tim", "slot room", "room id", "kode room", "custom room", "open mabar", "mabar", "push rank", "scrim", "turnamen", "discord", "livestream", "stream", "mobile legends", "mlbb", "valorant", "pubg", "minecraft", "diamond", "dm"];
+export const GAMING_SAFE_PHRASES = ["slot vip", "slot kosong", "slot penuh", "slot tim", "slot room", "room id", "kode room", "custom room", "open mabar", "mabar", "push rank", "scrim", "turnamen", "discord", "livestream", "stream", "mobile legends", "mlbb", "valorant", "pubg", "minecraft", "diamond", "dm", "map", "farm", "raid", "boss", "dungeon", "guild", "grind", "spawn", "respawn", "loot", "quest", "leveling"];
 
 export const STRONG_GAMING_CONTEXT = ["moonton", "gacha", "mobile legends", "mlbb", "genshin", "honkai", "valorant", "pubg", "minecraft", "roblox", "dota", "free fire", "wild rift"];
 

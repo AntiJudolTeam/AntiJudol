@@ -1,6 +1,6 @@
 import { normalizeText } from "./normalizeText.js";
 import { canonicalizeText } from "./typoMatcher.js";
-import { HIGH_CONFIDENCE_BRANDS, AMBIGUOUS_BRANDS, HARD_MESSAGE_PATTERNS, PROMO_MESSAGE_PATTERNS, WEAK_MESSAGE_PATTERNS, SUSPICIOUS_TOKEN_PATTERNS, ANTI_JUDOL_PHRASES, GAMING_SAFE_PHRASES, GENERAL_SAFE_PHRASES, STRONG_GAMING_CONTEXT, LEET_FOLDS } from "../../data/blocklist.js";
+import { HIGH_CONFIDENCE_BRANDS, AMBIGUOUS_BRANDS, HARD_MESSAGE_PATTERNS, PROMO_MESSAGE_PATTERNS, WEAK_MESSAGE_PATTERNS, SUSPICIOUS_TOKEN_PATTERNS, ANTI_JUDOL_PHRASES, GAMING_SAFE_PHRASES, GENERAL_SAFE_PHRASES, STRONG_GAMING_CONTEXT, LEET_FOLDS, GAMBLING_STEM_SET } from "../../data/blocklist.js";
 
 const TOKEN_RE = /[a-z0-9]+/g;
 const LEET_CHAR_RE = /[01345678@$!|]/g;
@@ -20,6 +20,9 @@ const MULTI_CHAR_CHAIN_RE = /\b[a-z0-9]{1,3}(?:\s*[._\-]\s*[a-z0-9]{1,3}){1,}\b/
 
 // Word + space + digit-tail, e.g. "eth 77" -> "eth77", "hoki 88" -> "hoki88".
 const LETTER_DIGIT_GAP_RE = /\b([a-z]{2,8})\s+(\d{2,4})\b/gi;
+
+// Soft promo IDs eligible for the gaming-context override.
+const GAMING_OVERRIDE_PROMO_IDS = new Set(["win-guarantee", "jp-claim", "profit-boost", "gacor-intensifier", "multiplier-hype", "win-chance"]);
 
 const PHRASE_REGEX_CACHE = new Map();
 
@@ -112,6 +115,11 @@ function buildVariants(value) {
     const collapsed = variant.replace(LETTER_DIGIT_GAP_RE, (m, letters, digits) => {
       const candidate = (letters + digits).toLowerCase();
       if (HIGH_CONFIDENCE_BRANDS.has(candidate)) {
+        changed = true;
+        return candidate;
+      }
+      
+      if (GAMBLING_STEM_SET.has(letters.toLowerCase()) && !/^[1-9]0+$/.test(digits)) {
         changed = true;
         return candidate;
       }
@@ -513,6 +521,15 @@ export function decide(donator, message) {
   }
 
   if (ctx.msg.promo.length >= 1) {
+    if (ctx.msg.promo.length === 1 && GAMING_OVERRIDE_PROMO_IDS.has(ctx.msg.promo[0].id) && ctx.msg.gamingSafe.length > 0 && !ctx.flags.hasMessageBrand && !ctx.flags.hasDonorBrand) {
+      return {
+        action: "allow",
+        stage: "gaming-context-override",
+        score: ctx.score,
+        reason: buildReason(ctx),
+        evidence: ctx,
+      };
+    }
     return {
       action: "review",
       stage: "single-promo",

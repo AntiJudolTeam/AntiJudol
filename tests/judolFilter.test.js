@@ -101,7 +101,7 @@ const CASES = [
   // 6. AMBIGUOUS / JARGON ONLY (Strict Review)
   // Heavily suggestive of judol, but missing explicit brand context.
   // ==========================================
-  { id: "review.jargon.wd", donator: "player3", msg: "Nyari situs yang wd berapapun pasti dibayar lunas bosku", ideal: "review" },
+  { id: "block.jargon.wd", donator: "player3", msg: "Nyari situs yang wd berapapun pasti dibayar lunas bosku", block: true },
   { id: "review.jargon.depo", donator: "player11", msg: "Gimana cara depo via pulsa?", ideal: "review" },
   { id: "review.jargon.garansi", donator: "player12", msg: "Lagi cari yang garansi kekalahan 100% saldo balik", ideal: "review" },
   { id: "review.jargon.bonus", donator: "player13", msg: "Bonus new member 200% di depan", ideal: "review" },
