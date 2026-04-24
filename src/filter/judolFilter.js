@@ -16,8 +16,10 @@ const OBFUSCATED_CHAIN_RE = /\b[a-z0-9](?:\s*[._\-\/\\,:;*+|~]\s*[a-z0-9]){1,}\b
 const SPACED_CHAIN_RE = /\b[a-z0-9](?:\s+[a-z0-9]){1,}\b/gi;
 
 // Short multi-char chains with separator: "bo-co-ran", "po-la", "ga-cor".
-// Capped at ≤3 chars per unit so "mobile-legends", "anti-judol" aren't touched.
 const MULTI_CHAR_CHAIN_RE = /\b[a-z0-9]{1,3}(?:\s*[._\-]\s*[a-z0-9]{1,3}){1,}\b/gi;
+
+// Word + space + digit-tail, e.g. "eth 77" -> "eth77", "hoki 88" -> "hoki88".
+const LETTER_DIGIT_GAP_RE = /\b([a-z]{2,8})\s+(\d{2,4})\b/gi;
 
 const PHRASE_REGEX_CACHE = new Map();
 
@@ -35,6 +37,19 @@ function getPhraseRegex(phrase) {
 
 function foldLeet(text, map) {
   return text.replace(LEET_CHAR_RE, (ch) => map[ch] ?? ch);
+}
+
+const SMART_LEET_MAP = Object.freeze({ "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "6": "g", "7": "t", "8": "b", "@": "a", "$": "s", "!": "i", "|": "i" });
+function foldLeetSmart(text) {
+  return text.replace(LEET_CHAR_RE, (ch, offset, full) => {
+    if (!/\d/.test(ch)) return SMART_LEET_MAP[ch] ?? ch;
+    const prev = full[offset - 1];
+    const next = full[offset + 1];
+    const prevIsLetter = prev && /[a-z]/i.test(prev);
+    const nextIsLetter = next && /[a-z]/i.test(next);
+    if (prevIsLetter && nextIsLetter) return SMART_LEET_MAP[ch] ?? ch;
+    return ch;
+  });
 }
 
 function tightenIntraWord(text) {
@@ -59,6 +74,9 @@ function addVariant(set, value) {
 
   const tight = tightenIntraWord(value);
   if (tight) set.add(tight);
+
+  const wordified = value.replace(/[^a-z0-9]+/gi, " ").trim();
+  if (wordified && wordified !== value) set.add(wordified);
 }
 
 function buildVariants(value) {
@@ -80,11 +98,26 @@ function buildVariants(value) {
     for (const map of LEET_FOLDS) {
       addVariant(variants, foldLeet(base, map));
     }
+
+    addVariant(variants, foldLeetSmart(base));
   }
 
   for (const base of bases) {
     const canon = canonicalizeText(base);
     if (canon) addVariant(variants, canon);
+  }
+
+  for (const variant of [...variants]) {
+    let changed = false;
+    const collapsed = variant.replace(LETTER_DIGIT_GAP_RE, (m, letters, digits) => {
+      const candidate = (letters + digits).toLowerCase();
+      if (HIGH_CONFIDENCE_BRANDS.has(candidate)) {
+        changed = true;
+        return candidate;
+      }
+      return m;
+    });
+    if (changed) addVariant(variants, collapsed);
   }
 
   const tokenSet = new Set();
@@ -159,17 +192,25 @@ function findNearBrandHits(prepared, brandSet, exactHits) {
     const minLen = Math.max(NEAR_BRAND_MIN_LEN, brand.length - NEAR_BRAND_MAX_DIST);
     const maxLen = brand.length + NEAR_BRAND_MAX_DIST;
 
-    outer: for (const sq of prepared.squeezed) {
-      if (sq.length < minLen) continue;
-      for (let len = minLen; len <= maxLen; len++) {
-        for (let i = 0; i + len <= sq.length; i++) {
-          const window = sq.slice(i, i + len);
-          if (window === brand) continue;
-          if (levenshtein(window, brand, NEAR_BRAND_MAX_DIST) <= NEAR_BRAND_MAX_DIST) {
-            hits.add(brand);
-            break outer;
-          }
-        }
+    let matched = false;
+
+    for (const token of prepared.tokens) {
+      if (token.length < minLen || token.length > maxLen) continue;
+      if (token === brand) continue;
+      if (levenshtein(token, brand, NEAR_BRAND_MAX_DIST) <= NEAR_BRAND_MAX_DIST) {
+        hits.add(brand);
+        matched = true;
+        break;
+      }
+    }
+    if (matched) continue;
+
+    for (const sq of prepared.squeezed) {
+      if (sq.length < minLen || sq.length > maxLen) continue;
+      if (sq === brand) continue;
+      if (levenshtein(sq, brand, NEAR_BRAND_MAX_DIST) <= NEAR_BRAND_MAX_DIST) {
+        hits.add(brand);
+        break;
       }
     }
   }
@@ -235,7 +276,7 @@ function inspectField(value, { messageMode = false } = {}) {
   const nearBrands = findNearBrandHits(prepared, HIGH_CONFIDENCE_BRANDS, highBrands);
   const suspicious = collectRuleHits(prepared.variants, SUSPICIOUS_TOKEN_PATTERNS);
 
-  let hard = messageMode ? collectRuleHits(prepared.variants, HARD_MESSAGE_PATTERNS) : [];
+  let hard = collectRuleHits(prepared.variants, HARD_MESSAGE_PATTERNS);
   let promo = messageMode ? collectRuleHits(prepared.variants, PROMO_MESSAGE_PATTERNS) : [];
   const weak = messageMode ? collectRuleHits(prepared.variants, WEAK_MESSAGE_PATTERNS) : [];
   const antiJudol = messageMode ? collectPhraseHits(prepared.variants, ANTI_JUDOL_PHRASES) : [];
@@ -328,6 +369,9 @@ function buildReason(ctx) {
   if (ctx.msg.hard.length) {
     parts.push(`hard=${previewRuleHits(ctx.msg.hard)}`);
   }
+  if (ctx.donor.hard.length) {
+    parts.push(`donorHard=${previewRuleHits(ctx.donor.hard)}`);
+  }
   if (ctx.msg.promo.length) {
     parts.push(`promo=${previewRuleHits(ctx.msg.promo)}`);
   }
@@ -402,6 +446,16 @@ export function decide(donator, message) {
     return {
       action: "block",
       stage: "hard-message",
+      score: ctx.score,
+      reason: buildReason(ctx),
+      evidence: ctx,
+    };
+  }
+
+  if (ctx.donor.hard.length > 0) {
+    return {
+      action: "block",
+      stage: "hard-donor",
       score: ctx.score,
       reason: buildReason(ctx),
       evidence: ctx,
