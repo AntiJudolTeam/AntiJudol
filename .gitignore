@@ -1,6 +1,36 @@
+# Dependencies
 node_modules/
-.env
-.killswitch
+**/node_modules/
 package-lock.json
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build artefacts
+dist/
+build/
+coverage/
+*.egg-info/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Runtime
+.killswitch
+**/.killswitch
 logs/
-urls.txt
+**/logs/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/

@@ -1,0 +1,15 @@
+# Generated from pyproject.toml. Used by Docker for explicit dependency installation.
+# For local dev, prefer:  pip install -e ".[dev]"
+
+# Core
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+pydantic[email]==2.*
+pydantic-settings==2.*
+
+# ML
+transformers>=4.40
+torch>=2.0
+sentencepiece>=0.2
+protobuf>=4.21
+emoji>=2.0

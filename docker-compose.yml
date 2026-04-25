@@ -1,0 +1,65 @@
+name: antijudol
+
+networks:
+  antijudol:
+    driver: bridge
+
+volumes:
+  proxy_logs:
+  filter_logs:
+
+services:
+  proxy:
+    image: antijudol-proxy:latest
+    build:
+      context: ./services/proxy
+      dockerfile: Dockerfile
+    ports:
+      - "${PROXY_PORT:-3000}:${PROXY_PORT:-3000}"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      PROXY_HOST: 0.0.0.0
+      PROXY_PORT: ${PROXY_PORT:-3000}
+      PROXY_LOG_LEVEL: ${PROXY_LOG_LEVEL:-info}
+      PROXY_KILL_SWITCH_PATH: /app/.killswitch
+      PROXY_FILTER_METHOD: ${PROXY_FILTER_METHOD:-classifier}
+      PROXY_FILTER_URL: http://filter:${FILTER_PORT:-9000}
+      PROXY_FILTER_TIMEOUT_MS: ${PROXY_FILTER_TIMEOUT_MS:-5000}
+    volumes:
+      - proxy_logs:/app/logs
+    networks:
+      - antijudol
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO - http://127.0.0.1:${PROXY_PORT:-3000}/ > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    depends_on:
+      filter:
+        condition: service_healthy
+    restart: unless-stopped
+
+  filter:
+    image: antijudol-filter:latest
+    build:
+      context: ./services/filter
+      dockerfile: Dockerfile
+    # No `ports:` — filter is internal-only, reached via the `antijudol` network.
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      FILTER_HOST: 0.0.0.0
+      FILTER_PORT: ${FILTER_PORT:-9000}
+      FILTER_LOG_LEVEL: ${FILTER_LOG_LEVEL:-INFO}
+      FILTER_CORS_ORIGINS: ${FILTER_CORS_ORIGINS:-["*"]}
+    volumes:
+      - filter_logs:/app/logs
+    networks:
+      - antijudol
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO - http://127.0.0.1:${FILTER_PORT:-9000}/health > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped

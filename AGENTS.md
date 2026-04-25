@@ -18,7 +18,41 @@ Browser/OBS → localhost:3000/overlay → src/server.js → src/routes/proxy/ov
                                                  Modify WS/fetch data → overlay renders filtered content
 ```
 
-### Project Structure
+### Repository Layout
+
+The project is a multi-service monorepo. Each service lives under `services/<name>/`.
+
+```
+AntiJudol/
+├── services/
+│   ├── proxy/                Bun/Express proxy — interception, injection, decision routing
+│   │   ├── src/ client/ public/ data/ scripts/ tests/
+│   │   ├── package.json, bun.lock
+│   │   └── Dockerfile
+│   └── filter/               FastAPI classifier — ML-based gambling detection
+│       ├── app/              FastAPI app code
+│       ├── model/            ML model artifacts (download separately, not in git)
+│       ├── requirements.txt
+│       └── Dockerfile
+├── docker-compose.yml        Orchestrates all services
+├── .dockerignore
+├── .env.example              Single source of truth for env vars (namespaced PROXY_*/FILTER_*)
+├── Makefile                  Local Bun + kill-switch shortcuts
+├── AGENTS.md / CLAUDE.md / README.md
+```
+
+Run commands from a service directory (`cd services/proxy && bun dev`) or via `docker compose` from the repo root. Paths in the **Proxy Service Structure** section below are relative to `services/proxy/`.
+
+### Filter Service (services/filter/)
+
+FastAPI classifier exposing `/api/v1/classify/predict` and `/api/v1/classify/predict/batch`. Loads a Hugging Face model from `model/` at startup. Used by proxy when `PROXY_FILTER_METHOD=classifier`. See `services/filter/README.md` for setup, endpoints, and model download instructions.
+
+The proxy chooses between the in-process algorithm (`src/filter/judolFilter.js`) and the classifier service via `PROXY_FILTER_METHOD`:
+
+- `algorithm` (default for local dev) — uses the built-in pattern/wordlist filter, no Python needed.
+- `classifier` (default in Docker) — proxy POSTs each donation to `PROXY_FILTER_URL` and uses the model's verdict.
+
+### Proxy Service Structure
 
 ```
 src/                          Server-side code (Bun/Node)
@@ -41,17 +75,24 @@ src/                          Server-side code (Bun/Node)
     impersonate.js            cuimp (curl-impersonate) client with cookie jar
   filter/
     judolFilter.js            decide(donator, message) → {action, stage, reason}
+    classifier.js             HTTP client for the FastAPI filter service
     normalizeText.js          Homoglyph/leet/decoration normalization with variant expansion
     typoMatcher.js            Fuzzy Indonesian dictionary matcher (canonicalization, near-miss scoring)
+    textUtils.js              Shared regexes (chains, leet) + foldLeet, tightenIntraWord, levenshtein
     wordlist.js               Loads data/wordlist-indonesia.txt; exposes SENSITIVE_TERMS
     homoglyphs.js             AUTO-GENERATED fold table — do not hand-edit
   utils/
     cfStrip.js                Remove Cloudflare Rocket Loader + challenge script tags from overlay HTML
     donationLog.js            Append per-donation decisions to logs/
+    feedbackLog.js            Append /feedback submissions to logs/
     helpers.js                getPlatformFromCookie, getPlatformFromReferer, injectScripts
-    killSwitch.js             isKillSwitchActive() — checks KILL_SWITCH_PATH existence
-    logger.js                 Leveled console logger
+    killSwitch.js             isKillSwitchActive() — checks PROXY_KILL_SWITCH_PATH existence
+    logFile.js                Shared log-path / sanitise / rotation helpers
+    logger.js                 Leveled tagged console logger
+    paths.js                  PROJECT_ROOT, PUBLIC_DIR, DATA_DIR, LOG_DIR
     platformMiddleware.js     resolvePlatform() — dispatch on query/cookie/referer
+    rateLimit.js              In-memory per-IP rate limiter
+    validation.js             asString/asNumberOrNull body coercion
 
 client/                       Browser-side code (bundled, not run directly by Bun)
   inject.js                   IIFE entry — WS/fetch/XHR hooks, sync /check call, MessageEvent delivery
@@ -80,8 +121,6 @@ tests/
   typoMatcher.test.js         Dictionary/sensitive matcher + canonicalization
   client/
     wsProtocol.test.js        Per-platform parse + modify (no browser needed)
-
-.env / .env.example           Environment variables
 ```
 
 ### Build Pipeline
@@ -132,7 +171,7 @@ Because every `wsProtocol/*.js` is a pure module (no DOM, no window), the per-pl
 - On Windows, cuimp has quirks we work around in `impersonate.js`: it omits `--impersonate`, omits `--compressed`, and re-downloads the binary every boot when `version` is pinned. Fix: pass the resolved `binaryPath` explicitly to `createCuimpHttp` after `downloadBinary()`, and set the flags via `extraCurlArgs`.
 
 **Kill Switch (src/utils/killSwitch.js):**
-If the file at `KILL_SWITCH_PATH` exists, `/check` short-circuits to `allow` for every request and logs the bypass. Touch the file to pause filtering during a live stream without restarting the server; `rm` to re-arm. Path resolution is relative to the project root (two levels up from `src/utils/`).
+If the file at `KILL_SWITCH_PATH` exists, `/check` short-circuits to `allow` for every request and logs the bypass. Touch the file to pause filtering during a live stream without restarting the server; `rm` to re-arm. Path resolution is relative to the service root (two levels up from `src/utils/`, i.e. `services/proxy/`). Under Docker, toggle via `docker compose exec proxy touch /app/.killswitch` (and `rm` to disable).
 
 ## Platform-Specific Details
 
@@ -306,15 +345,58 @@ import * as myplatform from "../../client/wsProtocol/myplatform.js";
 
 ## Environment Variables
 
-| Variable           | Default       | Description                                  |
-| ------------------ | ------------- | -------------------------------------------- |
-| `ENVIRONMENT`      | `development` | `development` \| `production`                |
-| `HOST`             | `0.0.0.0`     | Server bind address                          |
-| `PORT`             | `3000`        | Server port                                  |
-| `LOG_LEVEL`        | —             | `debug` \| `info` \| `warn` \| `error` (default: debug in dev, info in prod) |
-| `KILL_SWITCH_PATH` | `.killswitch` | When this file exists, `/check` allows everything |
+Single source of truth: **`.env` at the repo root** (template in `.env.example`). Every variable is namespaced by service so a glance at any line tells you which service it belongs to. The shared `ENVIRONMENT` knob is the only un-prefixed var — it controls debug/reload/log defaults across all services.
 
-No credentials required — the cuimp binary auto-downloads to `~/.cuimp/binaries/` on first use and is pre-warmed on startup by `src/server.js`.
+### Shared
+
+| Variable      | Default       | Description                                                    |
+| ------------- | ------------- | -------------------------------------------------------------- |
+| `ENVIRONMENT` | `development` | `development` \| `production` — drives debug/reload, log defaults |
+
+### Proxy (`PROXY_*`)
+
+| Variable                       | Default                   | Description                                                   |
+| ------------------------------ | ------------------------- | ------------------------------------------------------------- |
+| `PROXY_HOST`                   | `0.0.0.0`                 | Bind address                                                  |
+| `PROXY_PORT`                   | `3000`                    | Port                                                          |
+| `PROXY_LOG_LEVEL`              | —                         | `debug` \| `info` \| `warn` \| `error` (default: debug in dev, info in prod) |
+| `PROXY_KILL_SWITCH_PATH`       | `.killswitch`             | When this file exists, `/check` allows everything             |
+| `PROXY_KILL_SWITCH_TTL_MS`     | `2000`                    | How long a kill-switch existence check is cached              |
+| `PROXY_FILTER_METHOD`          | `algorithm`               | `algorithm` \| `classifier` — which filter to consult         |
+| `PROXY_FILTER_URL`             | `http://localhost:9000`   | Filter service URL (used when `FILTER_METHOD=classifier`)     |
+| `PROXY_FILTER_TIMEOUT_MS`      | `5000`                    | Classifier HTTP request timeout                               |
+| `PROXY_MAX_FIELD_LENGTH`       | `4096`                    | Max chars per body field on `/check` and `/feedback`          |
+| `PROXY_JSON_BODY_LIMIT`        | `64kb`                    | Express body parser limit                                     |
+| `PROXY_FEEDBACK_RATE_WINDOW_MS`| `60000`                   | `/feedback` rate-limit window                                 |
+| `PROXY_FEEDBACK_RATE_MAX`      | `30`                      | `/feedback` requests per window per IP                        |
+| `PROXY_BLOCK_DONATOR`          | `Anonymous`               | Donor name replacement on block                               |
+| `PROXY_BLOCK_MESSAGE`          | (Indonesian default)      | Message replacement on block                                  |
+| `PROXY_DEFAULT_PLATFORM`       | `saweria`                 | Asset-proxy fallback when no cookie/referer is present        |
+
+### Filter (`FILTER_*`)
+
+pydantic-settings reads these with `env_prefix="FILTER_"`, so internally the code reads `settings.HOST`, `settings.PORT`, etc.
+
+| Variable                  | Default     | Description                                  |
+| ------------------------- | ----------- | -------------------------------------------- |
+| `FILTER_HOST`             | `127.0.0.1` | Bind address                                 |
+| `FILTER_PORT`             | `9000`      | Port (internal-only in Docker; not published) |
+| `FILTER_LOG_LEVEL`        | `INFO`      | DEBUG / INFO / WARNING / ERROR / CRITICAL    |
+| `FILTER_CORS_ORIGINS`     | `["*"]`     | CORS allow-list (JSON list)                  |
+| `FILTER_MODEL_BATCH_SIZE` | `32`        | Tokenizer/model batch size                   |
+| `FILTER_MODEL_MAX_LENGTH` | `512`       | Tokenizer max sequence length                |
+
+`APP_NAME`/`APP_VERSION` are intentionally hardcoded in `app/config/settings.py` — not env-driven (they identify the build, not the deployment).
+
+### How the file is loaded
+
+- **Bun (proxy)**: package scripts pass `--env-file=../../.env` to bun.
+- **Pydantic (filter)**: `settings.py` resolves the root `.env` via `Path(__file__).resolve().parents[3]`.
+- **Docker Compose**: auto-loads root `.env` for `${VAR}` substitution; each service's `environment:` block forwards only the vars it cares about.
+
+Defaults are sane — **`.env` is optional**. If you want overrides, `cp .env.example .env` and tweak.
+
+No credentials required — the cuimp binary auto-downloads to `~/.cuimp/binaries/` on first use and is pre-warmed on startup by `services/proxy/src/server.js`.
 
 ## Common Issues & Solutions
 
@@ -342,25 +424,42 @@ No credentials required — the cuimp binary auto-downloads to `~/.cuimp/binarie
 
 **Edited `client/` but changes don't take effect:** You forgot to rebuild the bundle. `bun dev`/`start`/`test` all run `build:inject` automatically — if you're loading `public/inject.js` by some other means, run `bun run build:inject` manually.
 
-## Testing
+## Testing & Running
+
+All Bun commands run from `services/proxy/`. Docker commands run from the repo root.
 
 ```bash
+cd services/proxy
+
 # Full suite — rebuilds inject bundle first, then runs filter + normalizeText + typoMatcher + wsProtocol tests
 bun test
 
 # Start server (also rebuilds bundle)
 bun dev
 
-# Exercise endpoints
-curl http://localhost:3000/overlay?platform=saweria&overlayType=alert&streamKey=TEST_KEY
-curl -X POST http://localhost:3000/check -H "Content-Type: application/json" \
-  -d '{"platform":"saweria","donator":"test","message":"slot gacor","amount":1000,"currency":"IDR"}'
-
 # Regenerate homoglyph fold table after editing scripts/charset.json
 bun scripts/build-homoglyphs.js
 
 # Rebuild only the client bundle (normally handled by dev/start/test)
 bun run build:inject
+```
+
+Docker workflow (from repo root):
+
+```bash
+docker compose up --build           # build and start
+docker compose logs -f proxy        # tail logs
+docker compose exec proxy touch /app/.killswitch   # activate kill switch
+docker compose exec proxy rm /app/.killswitch      # deactivate
+docker compose down                 # stop
+```
+
+Exercise endpoints (same regardless of launch method):
+
+```bash
+curl http://localhost:3000/overlay?platform=saweria&overlayType=alert&streamKey=TEST_KEY
+curl -X POST http://localhost:3000/check -H "Content-Type: application/json" \
+  -d '{"platform":"saweria","donator":"test","message":"slot gacor","amount":1000,"currency":"IDR"}'
 ```
 
 Test coverage:

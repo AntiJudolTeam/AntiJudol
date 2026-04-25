@@ -1,0 +1,22 @@
+# Python build artifacts
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Secrets / runtime
+.env
+.env.*
+!.env.example
+logs
+
+# Local dev assets that the build doesn't need
+model
+tests
+README.md
+.gitignore
+pyproject.toml

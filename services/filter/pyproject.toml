@@ -1,0 +1,59 @@
+[project]
+name = "antijudol-filter"
+version = "1.0.0"
+description = "FastAPI classifier service for detecting gambling promotion text."
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "fastapi==0.115.*",
+    "uvicorn[standard]==0.34.*",
+    "pydantic[email]==2.*",
+    "pydantic-settings==2.*",
+    "transformers>=4.40",
+    "torch>=2.0",
+    "sentencepiece>=0.2",
+    "protobuf>=4.21",
+    "emoji>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+exclude = ["model", "logs", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line too long — formatter handles it
+    "B008",  # FastAPI Depends() default — false positive
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "S101"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AntiJudol</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 560px;
+        background: #141414;
+        border: 1px solid #222;
+        border-radius: 12px;
+        padding: 32px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+      }
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .logo {
+        width: 32px;
+        height: 32px;
+        background: #4a9eff;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        color: #fff;
+      }
+      .header h1 {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+      }
+      .github-link {
+        color: #555;
+        transition: color 0.2s;
+      }
+      .github-link:hover {
+        color: #e0e0e0;
+      }
+      .github-link svg {
+        display: block;
+      }
+
+      .subtitle {
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 20px;
+      }
+
+      .supported {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+      .supported span {
+        padding: 4px 10px;
+        border-radius: 4px;
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        font-size: 11px;
+        color: #888;
+        letter-spacing: 0.3px;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      input:focus {
+        border-color: #4a9eff;
+      }
+      input::placeholder {
+        color: #444;
+      }
+
+      .error {
+        color: #ff5c5c;
+        font-size: 13px;
+        margin-top: 12px;
+        display: none;
+      }
+
+      .result {
+        margin-top: 20px;
+        display: none;
+        animation: fadeIn 0.2s ease;
+      }
+      .result.visible {
+        display: block;
+      }
+
+      .result-box {
+        display: flex;
+        align-items: stretch;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 6px;
+      }
+      .result-url {
+        flex: 1;
+        padding: 12px 14px;
+        background: #0a0a0a;
+        color: #4adf8a;
+        font-size: 12px;
+        font-family: "SF Mono", "Consolas", monospace;
+        word-break: break-all;
+        line-height: 1.5;
+      }
+      .copy-btn {
+        padding: 0 16px;
+        background: #1a1a1a;
+        border: none;
+        border-left: 1px solid #2a2a2a;
+        color: #888;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .copy-btn:hover {
+        background: #222;
+        color: #e0e0e0;
+      }
+      .copy-btn.copied {
+        color: #4adf8a;
+      }
+
+      .footer {
+        margin-top: 32px;
+        text-align: center;
+        font-size: 12px;
+        color: #444;
+      }
+      .footer a {
+        color: #555;
+        text-decoration: none;
+      }
+      .footer a:hover {
+        color: #888;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="shortcut icon" href="/favicon.ico?v=1" />
+  </head>
+  <body>
+    <div class="card">
+      <div class="header">
+        <div class="header-left">
+          <div class="logo">A</div>
+          <h1>AntiJudol</h1>
+        </div>
+        <a href="https://github.com/AntiJudolTeam/AntiJudol" target="_blank" class="github-link" title="GitHub">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
+            />
+          </svg>
+        </a>
+      </div>
+
+      <p class="subtitle">Paste your overlay URL to get the filtered version</p>
+
+      <div class="supported">
+        <span>Saweria</span>
+        <span>Tako</span>
+        <span>BagiBagi</span>
+        <span>Sociabuzz</span>
+      </div>
+
+      <label for="input-url">Overlay URL</label>
+      <input type="text" id="input-url" placeholder="https://saweria.co/widgets/alert?streamKey=..." autofocus />
+
+      <div class="error" id="error"></div>
+
+      <div class="result" id="result">
+        <label>Protected URL</label>
+        <div class="result-box">
+          <div class="result-url" id="result-url"></div>
+          <button class="copy-btn" id="copy-btn" onclick="copyUrl()">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="/validate">Bantu kami disini 😄</a> · Made by
+      <a href="https://github.com/AntiJudolTeam" target="_blank">AntiJudol Team</a>
+    </div>
+
+    <script>
+      const patterns = [
+        {
+          match: /^https?:\/\/saweria\.co\/widgets\/(alert|mediashare)\?streamKey=([^&]+)/,
+          build: (m) => `platform=saweria&overlayType=${m[1]}&streamKey=${m[2]}`,
+        },
+        {
+          match: /^https?:\/\/tako\.id\/overlay\/(alert|mediashare)\?overlay_key=([^&]+)/,
+          build: (m) => `platform=tako&overlayType=${m[1]}&streamKey=${m[2]}`,
+        },
+        {
+          match: /^https?:\/\/bagibagi\.co\/alertbox\/([^?&#]+)/,
+          build: (m) => `platform=bagibagi&streamKey=${m[1]}`,
+        },
+        {
+          match: /^https?:\/\/sociabuzz\.com\/pro\/tribe\/(alert1\/v3|mediashare\/v2)\/([^?&#]+)(.*)?/,
+          build: (m) => {
+            const type = m[1].startsWith("alert") ? "alert" : "mediashare";
+            let qs = `platform=sociabuzz&overlayType=${type}&streamKey=${m[2]}`;
+            if (m[3] && m[3].startsWith("?")) qs += "&" + m[3].slice(1);
+            return qs;
+          },
+        },
+      ];
+
+      const input = document.getElementById("input-url");
+      const resultDiv = document.getElementById("result");
+      const resultUrl = document.getElementById("result-url");
+      const errorDiv = document.getElementById("error");
+      const copyBtn = document.getElementById("copy-btn");
+
+      let debounceTimer;
+      input.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(convert, 200);
+      });
+
+      function convert() {
+        const url = input.value.trim();
+        errorDiv.style.display = "none";
+        resultDiv.classList.remove("visible");
+        copyBtn.textContent = "Copy";
+        copyBtn.classList.remove("copied");
+
+        if (!url) return;
+
+        for (const p of patterns) {
+          const m = url.match(p.match);
+          if (m) {
+            resultUrl.textContent = `${location.origin}/overlay?${p.build(m)}`;
+            resultDiv.classList.add("visible");
+            return;
+          }
+        }
+
+        errorDiv.textContent = "Unrecognized URL. Supported platforms: Saweria, Tako, BagiBagi, Sociabuzz";
+        errorDiv.style.display = "block";
+      }
+
+      function copyUrl() {
+        navigator.clipboard.writeText(resultUrl.textContent).then(() => {
+          copyBtn.textContent = "Copied!";
+          copyBtn.classList.add("copied");
+          setTimeout(() => {
+            copyBtn.textContent = "Copy";
+            copyBtn.classList.remove("copied");
+          }, 2000);
+        });
+      }
+    </script>
+  </body>
+</html>

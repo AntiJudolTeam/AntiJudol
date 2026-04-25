@@ -1,206 +1,128 @@
 # AntiJudol
 
-Proxy server that instruments streaming donation overlay widgets to intercept, inspect, and filter messages in real-time. Built to combat gambling promotion ("judol") in Indonesian live-streaming donation overlays.
+Proxy + classifier stack that intercepts streaming donation overlay widgets, inspects donations in real-time, and replaces gambling-promotion ("judol") content at the data source — before the overlay renders it. TTS audio for blocked donations is stripped too.
 
 ## Supported Platforms
 
 | Platform                           | Alert | Mediashare | CF Bypass         |
 | ---------------------------------- | ----- | ---------- | ----------------- |
-| [Saweria](https://saweria.co)      | Yes   | Yes        | —                 |
-| [Tako](https://tako.id)            | Yes   | Yes        | —                 |
-| [BagiBagi](https://bagibagi.co)    | Yes   | Yes        | curl-impersonate  |
-| [Sociabuzz](https://sociabuzz.com) | Yes   | Yes        | —                 |
+| [Saweria](https://saweria.co)      | ✅    | ✅         | —                 |
+| [Tako](https://tako.id)            | ✅    | ✅         | —                 |
+| [BagiBagi](https://bagibagi.co)    | ✅    | ✅         | curl-impersonate  |
+| [Sociabuzz](https://sociabuzz.com) | ✅    | ✅         | —                 |
 
 ## How It Works
 
-1. Proxies the overlay HTML and injects interception hooks
-2. Hooks WebSocket, fetch, and XHR to intercept donation data
-3. Checks each donation against the judol filter via a synchronous `/check` call
-4. Blocked donations have their donator name, message, and TTS audio replaced/removed at the data source — before the overlay renders
+1. The **proxy** fetches the platform's overlay HTML and injects a small browser hook bundle.
+2. The hook intercepts WebSocket / fetch / XHR donation traffic in the browser.
+3. Each donation is sent to `POST /check` for a verdict.
+4. Blocked donations have donor name, message, and TTS audio replaced/removed at the source.
 
-## Setup
+The verdict comes from one of two filters:
 
-Requires [Bun](https://bun.com/) (1.2+).
+- **`algorithm`** (default for local dev) — fast pattern/wordlist filter built into the proxy. No Python required.
+- **`classifier`** (default in Docker) — the proxy POSTs each donation to the filter service, which runs an ML classifier. Set `PROXY_FILTER_METHOD=classifier` and `PROXY_FILTER_URL=http://...` to use it.
 
-```bash
-bun install
-cp .env.example .env   # edit if you need to override defaults
-bun dev                # or: bun start
+## Repository Layout
+
+```
+AntiJudol/
+├── services/
+│   ├── proxy/        Bun/Express proxy — interception, injection, decision routing
+│   └── filter/       FastAPI ML classifier service
+├── docker-compose.yml
+├── .env.example      Single source of truth for runtime config
+└── Makefile          Convenience targets for local dev
 ```
 
-`bun dev` / `bun start` automatically bundle the client-side injection script (`client/inject.js` → `public/inject.js`) before booting the server.
+Service-specific docs live in [`services/proxy/README.md`](services/proxy/README.md) and [`services/filter/README.md`](services/filter/README.md). Architecture deep-dive lives in [`AGENTS.md`](AGENTS.md).
 
-On first boot, the `impersonate` layer auto-downloads the `curl-impersonate` binary into `~/.cuimp/binaries/` — no Docker, no external service.
+## Quick Start (Docker — recommended)
+
+```bash
+cp .env.example .env       # optional — defaults work for production deployment
+docker compose up --build
+```
+
+The proxy will be available at <http://localhost:3000>. The filter service is internal-only — it's reachable from `proxy` over the `antijudol` network but not exposed to the host.
+
+## Quick Start (Local dev)
+
+Requires [Bun 1.2+](https://bun.com/) and Python 3.10+ if using the classifier filter.
+
+```bash
+make install        # bun install + pip install -r requirements.txt
+make dev            # runs proxy + filter concurrently; Ctrl-C kills both
+make dev-proxy      # proxy only (uses built-in algorithm filter, no Python)
+make test           # runs proxy test suite
+```
+
+The proxy auto-bundles `client/inject.js` → `public/inject.js` on every `bun dev`/`start`/`test`.
 
 ## Usage
 
-1. Open `http://localhost:3000`
+1. Open <http://localhost:3000>
 2. Paste your overlay URL
 3. Copy the generated AntiJudol URL
 4. Use it as a Browser Source in OBS
 
-### Example URLs
+### Direct URL forms
 
-```
-# Saweria
+```text
 http://localhost:3000/overlay?platform=saweria&overlayType=alert&streamKey=YOUR_KEY
-
-# Tako
 http://localhost:3000/overlay?platform=tako&overlayType=alert&streamKey=YOUR_KEY
-
-# BagiBagi
 http://localhost:3000/overlay?platform=bagibagi&streamKey=YOUR_KEY
-
-# Sociabuzz
 http://localhost:3000/overlay?platform=sociabuzz&overlayType=alert&streamKey=YOUR_KEY
 ```
 
 ## Configuration
 
-### Environment Variables
+All config is environment-driven. Variable names are namespaced (`PROXY_*`, `FILTER_*`) so it's always clear which service owns a given knob. The complete list with descriptions is in [`.env.example`](.env.example).
 
-| Variable           | Default       | Description                                  |
-| ------------------ | ------------- | -------------------------------------------- |
-| `ENVIRONMENT`      | `development` | `development` \| `production`                |
-| `HOST`             | `0.0.0.0`     | Server bind address                          |
-| `PORT`             | `3000`        | Server port                                  |
-| `LOG_LEVEL`        | —             | `debug` \| `info` \| `warn` \| `error`       |
-| `KILL_SWITCH_PATH` | `.killswitch` | Touch this file to bypass filtering          |
+Highlights:
 
-### Filter
+| Variable                   | Default       | Service | Purpose                              |
+| -------------------------- | ------------- | ------- | ------------------------------------ |
+| `ENVIRONMENT`              | `development` | shared  | `development` or `production`        |
+| `PROXY_PORT`               | `3000`        | proxy   | Public port                          |
+| `PROXY_FILTER_METHOD`      | `algorithm`   | proxy   | `algorithm` or `classifier`          |
+| `PROXY_FILTER_URL`         | `http://localhost:9000` | proxy | Where to reach the filter service |
+| `PROXY_KILL_SWITCH_PATH`   | `.killswitch` | proxy   | Filename or path; presence = bypass  |
+| `PROXY_BLOCK_MESSAGE`      | (Indonesian)  | proxy   | Replacement text for blocked messages |
+| `FILTER_PORT`              | `9000`        | filter  | Internal port (not host-published)   |
+| `FILTER_LOG_LEVEL`         | `INFO`        | filter  | DEBUG/INFO/WARNING/ERROR/CRITICAL    |
 
-Blocklists live in `data/blocklist.js` (brands, strong/weak patterns, suspicious-name heuristics, leet map). Decision logic is in `src/filter/judolFilter.js`. The homoglyph fold table in `src/filter/homoglyphs.js` is generated from `scripts/charset.json`:
+## Kill Switch
+
+Touch the file at `PROXY_KILL_SWITCH_PATH` to force `/check` to return `allow` for every request — useful if the filter misbehaves during a live stream. Remove the file to re-arm.
 
 ```bash
-bun scripts/build-homoglyphs.js
+make kill-on        # auto-detects local vs docker
+make kill-off
 ```
 
-When blocked:
+## Filter
 
-- Donator name → `"Anonymous"` (`src/constants.js`)
-- Message → `"[Message has been blocked by AntiJudol]"` (`src/constants.js`)
-- TTS audio → removed/nulled (no audio playback for blocked donations)
+The built-in `algorithm` filter lives in [`services/proxy/src/filter/`](services/proxy/src/filter/). Blocklists (`data/blocklist.js`), Indonesian dictionary (`data/wordlist-indonesia.txt`), and the auto-generated homoglyph fold table (`src/filter/homoglyphs.js`) are all data-driven.
 
-### Kill Switch
+The ML `classifier` filter is a separate FastAPI service in [`services/filter/`](services/filter/). It loads a Hugging Face model at startup and exposes `/api/v1/classify/predict` and `/api/v1/classify/predict/batch`.
 
-Create the file pointed to by `KILL_SWITCH_PATH` to force `/check` to return `allow` for every request — useful if the filter misbehaves during a live stream. Remove the file to re-arm.
+## Testing
 
-## Adding a Platform
+```bash
+# Proxy
+cd services/proxy && bun test
 
-### 1. Platform config (`src/platforms.js`)
-
-```js
-myplatform: {
-  name: "MyPlatform",
-  streamKeyParam: "key",
-  overlays: ["alert", "mediashare"],
-  overlayUrl: ({ streamKey, overlayType }) => `https://example.com/overlay/${overlayType}?key=${streamKey}`,
-  assetOrigin: "https://example.com",
-  backendOrigin: "https://example.com/api",
-  backendPathPrefix: "/api",       // null if backend is on a different origin
-  useImpersonate: false,           // true for Cloudflare-protected sites
-  forwardHeaders: [],              // dynamic headers to forward from browser
-  backendHeaders: ({ streamKey }) => ({ ... }),
-  assetHeaders: () => ({ ... }),
-}
-```
-
-### 2. Donation parser + modifier (`client/wsProtocol/myplatform.js`)
-
-```js
-// parse: extract donation fields from raw WS data
-export function parse(raw) {
-  // Return [{donator, message, amount, currency}] or null
-}
-
-// modify: rewrite raw WS data with blocked replacements
-export function modify(raw, replacement) {
-  // Apply replacement.replaceDonator / replacement.replaceMessage, null TTS fields
-  // Return modified raw string
-}
-```
-
-Then register the module in `client/inject.js`:
-
-```js
-import * as myplatform from "./wsProtocol/myplatform.js";
-const wsProtocol = { saweria, bagibagi, sociabuzz, myplatform };
-```
-
-### 3. Native path rewrite (`src/routes/proxy/overlay.js`)
-
-```js
-router.get("/myplatform/overlay/:key", (req, res, next) => {
-  req.query = { ...req.query, platform: "myplatform", streamKey: req.params.key };
-  req.url = "/overlay?" + new URLSearchParams(req.query).toString();
-  next();
-});
-```
-
-### 4. URL converter (`public/index.html`)
-
-```js
-{ match: /^https?:\/\/myplatform\.com\/overlay\/([^?]+)/, build: (m) => `platform=myplatform&streamKey=${m[1]}` },
-```
-
-## Project Structure
-
-```
-src/                          Server-side code
-  server.js                   Entry point — validates config, pre-downloads impersonate binary, starts Express
-  config.js                   Environment-driven config
-  constants.js                Wire-protocol constants
-  platforms.js                Platform configurations
-  routes/
-    index.js                  Route aggregator + JSON body parser
-    api/check.js              POST /check — donation filter endpoint
-    proxy/overlay.js          GET /overlay — HTML proxy + script injection + native path rewrites
-    proxy/backend.js          /backend/:platform/* — API proxy
-    proxy/assets.js           Catch-all — static asset proxy
-    web/static.js             express.static over public/
-  antibot/
-    index.js                  Thin facade — forwards to impersonate
-    impersonate.js            cuimp (curl-impersonate) client
-  filter/
-    judolFilter.js            Decision logic (decide())
-    normalizeText.js          Text normalization (homoglyph fold, leet strip, etc.)
-    typoMatcher.js            Fuzzy dictionary + sensitive-term matcher
-    wordlist.js               Loads data/wordlist-indonesia.txt
-    homoglyphs.js             Auto-generated fold table (do not hand-edit)
-  utils/
-    cfStrip.js                Strip Cloudflare script artifacts from overlay HTML
-    donationLog.js            Per-donation decision log
-    helpers.js                Cookie/referer helpers, script injection
-    killSwitch.js             Checks KILL_SWITCH_PATH existence
-    logger.js                 Leveled console logger
-    platformMiddleware.js     resolvePlatform — query/cookie/referer → platform
-
-client/                       Browser-side source (bundled → public/inject.js)
-  inject.js                   WS/fetch/XHR hooks + donation filtering
-  wsProtocol/                 Per-platform parse/modify modules (saweria, bagibagi, sociabuzz, tako)
-
-public/                       HTTP-served static files
-  inject.js                   Build output — bundled from client/inject.js
-  index.html                  Web UI — overlay URL converter
-
-data/
-  blocklist.js                Brand names, strong/weak patterns, leet map
-  wordlist-indonesia.txt      Dictionary for fuzzy typo detection
-
-scripts/
-  build-homoglyphs.js         Regenerate src/filter/homoglyphs.js from charset.json
-  charset.json                Upstream homoglyph dataset (source of truth)
-
-tests/                        Bun test suite (filter, normalizeText, typoMatcher, wsProtocol)
+# Filter
+cd services/filter && python -m pytest
 ```
 
 ## Tech Stack
 
-- **Bun** — runtime + bundler (`bun build` produces `public/inject.js` from `client/`)
-- **Express** — HTTP proxy server
-- **[cuimp](https://www.npmjs.com/package/cuimp)** — Node wrapper around `curl-impersonate` for Cloudflare bypass
-- **[curl-impersonate](https://github.com/lexiforest/curl-impersonate)** (lexiforest fork) — TLS/HTTP fingerprint spoofing
+- **Bun** + **Express** — proxy runtime and bundler
+- **FastAPI** + **PyTorch** + **Transformers** — ML classifier
+- **[cuimp](https://www.npmjs.com/package/cuimp)** wrapping **[curl-impersonate](https://github.com/lexiforest/curl-impersonate)** — Cloudflare bypass for protected platforms
 
 ## Authors
 
-Made by [AntiJudol Team](https://github.com/AntiJudolTeam)
+[AntiJudol Team](https://github.com/AntiJudolTeam)
