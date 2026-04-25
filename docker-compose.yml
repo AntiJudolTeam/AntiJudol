@@ -22,7 +22,7 @@ services:
       PROXY_FILTER_URL: http://filter:${FILTER_PORT:-9000}
       PROXY_FILTER_TIMEOUT_MS: ${PROXY_FILTER_TIMEOUT_MS:-5000}
     volumes:
-      - ./services/proxy/logs:logs
+      - ./services/proxy/logs:/app/logs
     networks:
       - antijudol
     healthcheck:
@@ -49,7 +49,7 @@ services:
       FILTER_LOG_LEVEL: ${FILTER_LOG_LEVEL:-INFO}
       FILTER_CORS_ORIGINS: ${FILTER_CORS_ORIGINS:-["*"]}
     volumes:
-      - ./services/filter/logs:logs
+      - ./services/filter/logs:/app/logs
     networks:
       - antijudol
     healthcheck:
