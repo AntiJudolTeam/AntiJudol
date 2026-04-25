@@ -21,14 +21,14 @@ install-filter:     ## Install filter deps (run after activating venv)
 dev:                ## Run both services concurrently (Ctrl+C kills both)
 	@trap 'kill 0' INT TERM EXIT; \
 	(cd $(PROXY) && bun dev) & \
-	(cd $(FILTER) && python -m app.main) & \
+	(cd $(FILTER) && python3 -m app.main) & \
 	wait
 
 dev-proxy:          ## Run proxy in watch mode (no filter)
 	cd $(PROXY) && bun dev
 
 dev-filter:         ## Run filter only
-	cd $(FILTER) && python -m app.main
+	cd $(FILTER) && python3 -m app.main
 
 test:               ## Run proxy test suite
 	cd $(PROXY) && bun test
