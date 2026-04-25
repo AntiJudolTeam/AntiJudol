@@ -9,8 +9,17 @@ function truncate(text, max = TRUNCATE_DEFAULT) {
 }
 
 function parseScore(reason) {
-  const m = /score=(-?\d+)/.exec(reason ?? "");
-  return m ? parseInt(m[1], 10) : null;
+  const m = /score=(-?\d+(?:\.\d+)?)/.exec(reason ?? "");
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Render integer scores as-is, floats trimmed to ≤2 decimals with trailing zeros stripped.
+function formatScore(score) {
+  if (score == null) return "?";
+  if (Number.isInteger(score)) return String(score);
+  return Number(score.toFixed(2)).toString();
 }
 
 function parseField(reason, name) {
@@ -40,13 +49,13 @@ function formatMarker(decision, killed) {
         : suspicious
           ? `suspicious=${suspicious}`
           : "";
-    return `[block:${stage} score=${score ?? "?"}${tail ? " " + truncate(tail) : ""}]`;
+    return `[block:${stage} score=${formatScore(score)}${tail ? " " + truncate(tail) : ""}]`;
   }
 
   const ctx = parseField(reason, "allowContext");
 
   if (score !== null && score >= NEAR_MISS_THRESHOLD) {
-    return ctx ? `[allow:near score=${score} ctx=${truncate(ctx, 40)}]` : `[allow:near score=${score}]`;
+    return ctx ? `[allow:near score=${formatScore(score)} ctx=${truncate(ctx, 40)}]` : `[allow:near score=${formatScore(score)}]`;
   }
   if (stage === "allow-context" && ctx) {
     return `[allow:ctx ${truncate(ctx, 60)}]`;
