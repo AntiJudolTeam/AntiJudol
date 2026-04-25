@@ -359,9 +359,26 @@ export function analyze(donator, message) {
   };
 }
 
+// Classifier integration tunables. The classifier reports a 0..1 gambling
+// probability; we map it to ±5 score points so a confident classifier can flip
+// borderline cases either way without overpowering the rule-based signals.
+const CLASSIFIER_SCORE_RANGE = 5;
+const CLASSIFIER_BLOCK_THRESHOLD = 0.85;
+
+function classifierScoreContribution(gambling) {
+  if (gambling == null || !Number.isFinite(gambling)) return 0;
+  return Math.round((gambling - 0.5) * 2 * CLASSIFIER_SCORE_RANGE);
+}
+
 function buildReason(ctx) {
   const parts = [`score=${ctx.score}`];
 
+  if (ctx.classifierGambling != null) {
+    parts.push(`classifier=${ctx.classifierGambling.toFixed(4)}`);
+  }
+  if (ctx.classifierBoost != null && ctx.classifierBoost !== 0) {
+    parts.push(`classifierBoost=${ctx.classifierBoost > 0 ? "+" : ""}${ctx.classifierBoost}`);
+  }
   if (ctx.msg.hard.length) {
     parts.push(`hard=${previewRuleHits(ctx.msg.hard)}`);
   }
@@ -408,26 +425,7 @@ function buildReason(ctx) {
   return parts.join("; ");
 }
 
-/**
- * @param {string | null | undefined} donator
- * @param {string | null | undefined} message
- * @returns {Decision}
- */
-export function decide(donator, message) {
-  const hasDonor = String(donator ?? "").trim().length > 0;
-  const hasMessage = String(message ?? "").trim().length > 0;
-
-  if (!hasDonor && !hasMessage) {
-    return {
-      action: "allow",
-      stage: "empty",
-      score: 0,
-      reason: "empty input",
-    };
-  }
-
-  const ctx = analyze(donator, message);
-
+function applyDecisionRules(ctx) {
   if (ctx.flags.antiJudol && !ctx.flags.hasHard && !ctx.flags.hasPromo && !ctx.flags.hasMessageBrand) {
     return {
       action: "allow",
@@ -567,4 +565,64 @@ export function decide(donator, message) {
     reason: buildReason(ctx),
     evidence: ctx,
   };
+}
+
+/**
+ * Combined-mode entry point.
+ *
+ * @param {string | null | undefined} donator
+ * @param {string | null | undefined} message
+ * @param {{ classifierGambling?: number | null }} [opts]
+ *   classifierGambling: 0..1 probability from the ML classifier. When provided,
+ *   it is folded into the algorithm's score (signed, ±5 range) and a strong
+ *   classifier signal can promote borderline allow/review cases to block.
+ * @returns {Decision}
+ */
+export function decide(donator, message, opts = {}) {
+  const { classifierGambling = null } = opts;
+
+  const hasDonor = String(donator ?? "").trim().length > 0;
+  const hasMessage = String(message ?? "").trim().length > 0;
+
+  if (!hasDonor && !hasMessage) {
+    return {
+      action: "allow",
+      stage: "empty",
+      score: 0,
+      reason: "empty input",
+    };
+  }
+
+  const ctx = analyze(donator, message);
+
+  // Fold classifier confidence into the algorithm score. The shift is signed,
+  // so a confident "not gambling" verdict can also pull a borderline case down.
+  if (classifierGambling != null && Number.isFinite(classifierGambling)) {
+    const boost = classifierScoreContribution(classifierGambling);
+    ctx.score += boost;
+    ctx.classifierGambling = classifierGambling;
+    ctx.classifierBoost = boost;
+  }
+
+  const decision = applyDecisionRules(ctx);
+
+  // Classifier override: if the algorithm allowed/reviewed but the classifier
+  // is highly confident this is gambling, escalate to block. Anti-judol context
+  // (explicit denouncement) is the one signal we never override.
+  if (
+    classifierGambling != null &&
+    classifierGambling >= CLASSIFIER_BLOCK_THRESHOLD &&
+    decision.action !== "block" &&
+    !ctx.flags.antiJudol
+  ) {
+    return {
+      action: "block",
+      stage: "classifier-confident",
+      score: ctx.score,
+      reason: buildReason(ctx),
+      evidence: ctx,
+    };
+  }
+
+  return decision;
 }

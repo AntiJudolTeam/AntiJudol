@@ -77,7 +77,7 @@ All settings are env-driven. See the [root `.env.example`](../../.env.example) f
 | ----------------------- | ------------------------ | ----------------------------------------- |
 | `PROXY_PORT`            | `3000`                   | Public bind port                          |
 | `PROXY_LOG_LEVEL`       | debug (dev) / info (prod) | Console verbosity                         |
-| `PROXY_FILTER_METHOD`   | `algorithm`              | `algorithm` or `classifier`               |
+| `PROXY_FILTER_METHOD`   | `algorithm`              | `algorithm`, `classifier`, or `both`      |
 | `PROXY_FILTER_URL`      | `http://localhost:9000`  | Used when `FILTER_METHOD=classifier`      |
 | `PROXY_FILTER_TIMEOUT_MS` | `5000`                 | Classifier request timeout                |
 | `PROXY_BLOCK_MESSAGE`   | (Indonesian default)     | Text replacing blocked donations          |

@@ -21,7 +21,8 @@ Proxy + classifier stack that intercepts streaming donation overlay widgets, ins
 The verdict comes from one of two filters:
 
 - **`algorithm`** (default for local dev) — fast pattern/wordlist filter built into the proxy. No Python required.
-- **`classifier`** (default in Docker) — the proxy POSTs each donation to the filter service, which runs an ML classifier. Set `PROXY_FILTER_METHOD=classifier` and `PROXY_FILTER_URL=http://...` to use it.
+- **`classifier`** — the proxy POSTs each donation to the filter service, which runs an ML classifier. Set `PROXY_FILTER_METHOD=classifier` and `PROXY_FILTER_URL=http://...` to use it.
+- **`both`** (recommended in Docker) — runs both filters and combines them. The classifier's gambling probability is folded into the algorithm's score so confident classifier output can push borderline cases either way; a strongly-confident classifier (`gambling ≥ 0.85`) can also block messages the algorithm wouldn't have flagged. Algorithm signature matches still always block; anti-judol context is never overridden.
 
 ## Repository Layout
 
@@ -85,7 +86,7 @@ Highlights:
 | -------------------------- | ------------- | ------- | ------------------------------------ |
 | `ENVIRONMENT`              | `development` | shared  | `development` or `production`        |
 | `PROXY_PORT`               | `3000`        | proxy   | Public port                          |
-| `PROXY_FILTER_METHOD`      | `algorithm`   | proxy   | `algorithm` or `classifier`          |
+| `PROXY_FILTER_METHOD`      | `algorithm`   | proxy   | `algorithm`, `classifier`, or `both` |
 | `PROXY_FILTER_URL`         | `http://localhost:9000` | proxy | Where to reach the filter service |
 | `PROXY_KILL_SWITCH_PATH`   | `.killswitch` | proxy   | Filename or path; presence = bypass  |
 | `PROXY_BLOCK_MESSAGE`      | (Indonesian)  | proxy   | Replacement text for blocked messages |

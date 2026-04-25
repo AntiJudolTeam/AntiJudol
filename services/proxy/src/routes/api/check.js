@@ -12,14 +12,37 @@ const router = express.Router();
 
 const VALIDATE_PLATFORM = "validate";
 
-async function getDecision(donator, message) {
-  if (FILTER_METHOD !== "classifier") return decide(donator, message);
+// Get the classifier's raw gambling probability without coercing it to a
+// block/allow verdict. Returns null on any failure so the algorithm can run
+// standalone.
+async function classifierGambling(donator, message) {
   try {
-    return await classify(donator, message);
+    const result = await classify(donator, message);
+    return typeof result.gambling === "number" ? result.gambling : null;
   } catch (err) {
-    logger.warn("classifier", "fallback to algorithm:", err.message);
+    logger.warn("classifier", "skipped:", err.message);
+    return null;
+  }
+}
+
+async function getDecision(donator, message) {
+  if (FILTER_METHOD === "algorithm") {
     return decide(donator, message);
   }
+
+  if (FILTER_METHOD === "classifier") {
+    try {
+      return await classify(donator, message);
+    } catch (err) {
+      logger.warn("classifier", "fallback to algorithm:", err.message);
+      return decide(donator, message);
+    }
+  }
+
+  // "both" — run algorithm + classifier in parallel; fold the classifier's
+  // gambling probability into the algorithm score for a single combined verdict.
+  const gambling = await classifierGambling(donator, message);
+  return decide(donator, message, { classifierGambling: gambling });
 }
 
 function summary(action, stage) {

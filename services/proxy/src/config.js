@@ -4,7 +4,7 @@
 const env = process.env;
 
 const VALID_LOG_LEVELS = new Set(["debug", "info", "warn", "error"]);
-const VALID_FILTER_METHODS = new Set(["algorithm", "classifier"]);
+const VALID_FILTER_METHODS = new Set(["algorithm", "classifier", "both"]);
 
 function readInt(name, fallback) {
   const raw = env[name];
@@ -71,7 +71,7 @@ export function validateConfig() {
       `PROXY_FILTER_METHOD must be one of [${[...VALID_FILTER_METHODS].join(", ")}], got "${FILTER_METHOD}"`
     );
   }
-  if (FILTER_METHOD === "classifier") {
+  if (FILTER_METHOD === "classifier" || FILTER_METHOD === "both") {
     try {
       // Throws on nonsense URLs — fail at startup, not at first request.
       new URL(FILTER_URL);

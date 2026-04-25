@@ -50,7 +50,8 @@ FastAPI classifier exposing `/api/v1/classify/predict` and `/api/v1/classify/pre
 The proxy chooses between the in-process algorithm (`src/filter/judolFilter.js`) and the classifier service via `PROXY_FILTER_METHOD`:
 
 - `algorithm` (default for local dev) — uses the built-in pattern/wordlist filter, no Python needed.
-- `classifier` (default in Docker) — proxy POSTs each donation to `PROXY_FILTER_URL` and uses the model's verdict.
+- `classifier` — proxy POSTs each donation to `PROXY_FILTER_URL` and uses the model's verdict directly. Falls back to algorithm on classifier failure.
+- `both` (recommended in Docker) — runs both. The classifier's `gambling` probability is mapped to ±5 score points and folded into `decide()`'s existing scoring, so a confident classifier can either push a borderline case over the block threshold or pull it back. A `gambling >= 0.85` reading additionally short-circuits the default-allow path with stage `classifier-confident`. Algorithm "block" verdicts are never downgraded by the classifier — signature matches always win. Anti-judol context is also never overridden.
 
 ### Proxy Service Structure
 
@@ -362,7 +363,7 @@ Single source of truth: **`.env` at the repo root** (template in `.env.example`)
 | `PROXY_LOG_LEVEL`              | —                         | `debug` \| `info` \| `warn` \| `error` (default: debug in dev, info in prod) |
 | `PROXY_KILL_SWITCH_PATH`       | `.killswitch`             | When this file exists, `/check` allows everything             |
 | `PROXY_KILL_SWITCH_TTL_MS`     | `2000`                    | How long a kill-switch existence check is cached              |
-| `PROXY_FILTER_METHOD`          | `algorithm`               | `algorithm` \| `classifier` — which filter to consult         |
+| `PROXY_FILTER_METHOD`          | `algorithm`               | `algorithm` \| `classifier` \| `both` — which filter(s) to consult |
 | `PROXY_FILTER_URL`             | `http://localhost:9000`   | Filter service URL (used when `FILTER_METHOD=classifier`)     |
 | `PROXY_FILTER_TIMEOUT_MS`      | `5000`                    | Classifier HTTP request timeout                               |
 | `PROXY_MAX_FIELD_LENGTH`       | `4096`                    | Max chars per body field on `/check` and `/feedback`          |

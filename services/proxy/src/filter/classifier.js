@@ -69,5 +69,6 @@ export async function classify(donator, message) {
     action: label === 1 ? "block" : "allow",
     stage: "classifier",
     reason: `score=${score}`,
+    gambling: typeof gambling === "number" ? gambling : null,
   };
 }
